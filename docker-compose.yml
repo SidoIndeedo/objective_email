@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  mongo:
+    image: mongo:7
+    container_name: mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: easyemail
+
+  log-sign:
+    build:
+      context: ./services/log-sign
+    container_name: log-sign
+    ports:
+      - "5000:5000"
+    depends_on:
+      - mongo
+    env_file:
+      - ./services/log-sign/.env
+
+  core:
+    build:
+      context: ./services/core
+    container_name: core
+    ports:
+      - "5002:5001"
+    depends_on:
+      - mongo
+    env_file:
+      - ./services/core/.env
+
+volumes:
+  mongo_data:
+
