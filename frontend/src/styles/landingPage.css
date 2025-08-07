@@ -1,0 +1,83 @@
+/* Reset */
+/* * {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+} */
+
+/* ✅ Navbar Wrapper */
+.navbar {
+  position: fixed;
+  top: 0;
+  width: 100%;
+  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.08);
+  border-bottom: 0.1px solid rgba(255, 255, 255, 0.2);
+  z-index: 1000;
+  padding: 0.5rem 0;
+}
+
+/* ✅ Inner container */
+.navbar-container {
+  max-width: 1200px;
+  margin: auto;
+  padding: 0 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* ✅ Logo */
+.navbar-logo {
+  height: 40px;
+}
+
+/* ✅ Links */
+.navbar-right {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+/* ✅ Nav link style */
+.nav-link {
+  text-decoration: none;
+  color: #ffffff;
+  font-weight: 500;
+  transition: color 0.3s ease;
+}
+
+.nav-link:hover {
+  color: #f0a500;
+}
+
+/* ✅ Login button */
+.login-btn {
+  padding: 0.5rem 1rem;
+  background: #f0a500;
+  border: none;
+  border-radius: 6px;
+  color: #1a1a1a;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.login-btn:hover {
+  background: #ffb347;
+}
+
+/* ✅ Mobile responsive */
+@media (max-width: 768px) {
+  .navbar-container {
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .navbar-right {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+}

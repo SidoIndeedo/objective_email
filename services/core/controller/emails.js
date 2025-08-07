@@ -68,7 +68,7 @@ const emailSummaries = await Promise.all(
 
     const payload = { subject, from, date, body };
 
-    catchAsync(emailQueue.add("process-emails", payload)); // 👈 Queue one-by-one
+    catchAsync(emailQueue.add("process-emails", payload));
 
     return payload;
   })

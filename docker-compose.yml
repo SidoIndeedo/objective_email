@@ -10,6 +10,18 @@ services:
       - mongo_data:/data/db
     environment:
       MONGO_INITDB_DATABASE: easyemail
+    networks:
+      - app-network
+
+  redis:
+    image: redis:7
+    container_name: redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - app-network
 
   log-sign:
     build:
@@ -19,8 +31,11 @@ services:
       - "5000:5000"
     depends_on:
       - mongo
+      - redis
     env_file:
       - ./services/log-sign/.env
+    networks:
+      - app-network
 
   core:
     build:
@@ -30,9 +45,44 @@ services:
       - "5002:5001"
     depends_on:
       - mongo
+      - redis
     env_file:
       - ./services/core/.env
+    networks:
+      - app-network
+
+  worker:
+    build:
+      context: ./services/worker
+    container_name: worker
+    depends_on:
+      - core
+      - mongo
+      - redis
+    env_file:
+      - ./services/worker/.env
+    restart: always
+    networks:
+      - app-network
+
+  summarizer:
+    build:
+      context: ./services/summarizer
+      dockerfile: Dockerfile
+    container_name: summarizer
+    ports:
+      - "5004:5004"
+    depends_on:
+      - core
+    restart: unless-stopped
+    networks:
+      - app-network
 
 volumes:
   mongo_data:
+  redis_data:
+
+networks:
+  app-network:
+    driver: bridge
 

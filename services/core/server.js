@@ -4,6 +4,8 @@ require("dotenv").config();
 const emailRouter = require("./Routes/fetchEmail");
 const app = express();
 
+
+
 const port = 5001 || process.env.port;
 
 // mongoose.connect(process.env.MONGO_URI).then(con => {
@@ -17,4 +19,4 @@ app.listen(port, () =>{
 })
 
 
-app.use("/v1", emailRouter)
+app.use("/v1", emailRouter);
