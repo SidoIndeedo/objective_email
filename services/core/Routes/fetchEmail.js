@@ -7,7 +7,9 @@ const emailRouter = express.Router();
 
 emailRouter.use(auth.jwtMolestor);
 
-emailRouter.get("/fix-my-problems", emails.all);
+emailRouter.get("/all", emails.all);
+emailRouter.delete("/delete/all", emails.deleteAllEmailsForUser)
+emailRouter.delete("/delete/:id", emails.deleteEmail)
 
 
 module.exports = emailRouter;

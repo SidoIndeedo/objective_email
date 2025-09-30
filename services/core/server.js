@@ -8,10 +8,10 @@ const app = express();
 
 const port = 5001 || process.env.port;
 
-// mongoose.connect(process.env.MONGO_URI).then(con => {
-//     console.log(con);
-//     console.log("db connected successfully")
-// })
+mongoose.connect(process.env.MONGO_URI).then(con => {
+    console.log(con);
+    console.log("db connected successfully")
+})
 
 
 app.listen(port, () =>{

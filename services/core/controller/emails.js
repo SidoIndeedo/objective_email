@@ -1,7 +1,8 @@
-const express = require("express");
-const catchAsync = require("../utils/catchAsync");
+// controllers/emailController.js
+const mongoose = require("mongoose");
 const { google } = require("googleapis");
-const emailQueue = require("../utils/emailQueue");
+const Email = require("../Model/Email");
+const catchAsync = require("../utils/catchAsync");
 
 exports.all = catchAsync(async (req, res) => {
   const accessToken = req.user.accessToken;
@@ -18,7 +19,6 @@ exports.all = catchAsync(async (req, res) => {
 
   const mails = darkList.data.messages || [];
 
-
   const emailDetails = await Promise.all(
     mails.map(mail =>
       gmail.users.messages.get({
@@ -29,54 +29,96 @@ exports.all = catchAsync(async (req, res) => {
     )
   );
 
-//   const  emailSummaries =  emailDetails.map(mailData => {
-//     const headers = mailData.data.payload.headers;
-//     const subject = headers.find(h => h.name === "Subject")?.value || "(No Subject)";
-//     const from = headers.find(h => h.name === "From")?.value || "(Unknown Sender)";
-//     const date = headers.find(h => h.name === "Date")?.value || "(No Date)";
+  let inserted = 0;
+  let failed = 0;
 
-  
-//     let body = "";
-//     const parts = mailData.data.payload.parts || [];
+  for (const detail of emailDetails) {
+    try {
+      const payload = detail.data.payload || {};
+      const headers = payload.headers || [];
 
-//     for (const part of parts) {
-//       if (part.mimeType === "text/plain" && part.body?.data) {
-//         body = Buffer.from(part.body.data, "base64").toString("utf8");
-//         break;
-//       }
-//     }
-//  emailQueue.add("process-emails", {emails: payloads}) //producer
-//     return { subject, from, date, body };
-//   });
+      const from = headers.find(h => h.name === "From")?.value || "";
+      const to = headers.find(h => h.name === "To")?.value?.split(",") || [];
+      const subject = headers.find(h => h.name === "Subject")?.value || "";
 
-const emailSummaries = await Promise.all(
-  emailDetails.map(async (mailData) => {
-    const headers = mailData.data.payload.headers;
-    const subject = headers.find(h => h.name === "Subject")?.value || "(No Subject)";
-    const from = headers.find(h => h.name === "From")?.value || "(Unknown Sender)";
-    const date = headers.find(h => h.name === "Date")?.value || "(No Date)";
-
-    let body = "";
-    const parts = mailData.data.payload.parts || [];
-
-    for (const part of parts) {
-      if (part.mimeType === "text/plain" && part.body?.data) {
-        body = Buffer.from(part.body.data, "base64").toString("utf8");
-        break;
-      }
+     await Email.findOneAndUpdate(
+  { messageId: detail.data.id, user: req.user.userId },
+  {
+    $setOnInsert: {   // ✅ only set these if document is new
+      user: req.user.userId,
+      messageId: detail.data.id,
+      from,
+      to,
+      subject,
+      summary: "",        // no summary yet
+      tags: [],
+      isImportant: false,
+      receivedAt: new Date(parseInt(detail.data.internalDate)),
+      isProcessed: false,
+      processedAt: null
     }
-
-    const payload = { subject, from, date, body };
-
-    catchAsync(emailQueue.add("process-emails", payload));
-
-    return payload;
-  })
+  },
+  { new: true, upsert: true, runValidators: true }
 );
 
 
-  
-  
-  res.status(202).json({ status: "email queued for processing" });
+      inserted++;
+    } catch (err) {
+      failed++;
+      console.error("❌ Failed to save email:", err.message);
+    }
+  }
 
+  if (failed > 0 && inserted === 0) {
+    return res.status(500).json({
+      status: "error",
+      message: "Failed to store any emails",
+    });
+  }
+
+  return res.status(201).json({
+    status: "emails stored",
+    inserted,
+    failed,
+    totalFetched: mails.length,
+  });
+});
+
+exports.deleteEmail = catchAsync(async (req, res) => {
+  const { id } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({
+      status: "error",
+      message: "Invalid email ID format",
+    });
+  }
+
+  const deletedEmail = await Email.findByIdAndDelete(id);
+
+  if (!deletedEmail) {
+    return res.status(404).json({
+      status: "error",
+      message: "Email not found",
+    });
+  }
+
+  res.status(200).json({
+    status: "success",
+    message: "Email deleted successfully",
+    deletedId: id,
+  });
+});
+
+exports.deleteAllEmailsForUser = catchAsync(async (req, res) => {
+  const userId = req.user.userId; // pulled from JWT
+
+  // Delete all emails for this user
+  const result = await Email.deleteMany({ user: userId });
+
+  res.status(200).json({
+    status: "success",
+    message: "All emails deleted for this user",
+    deletedCount: result.deletedCount,
+  });
 });
