@@ -12,12 +12,23 @@ exports.all = catchAsync(async (req, res) => {
 
   const gmail = google.gmail({ version: "v1", auth: oauth2client });
 
-  const darkList = await gmail.users.messages.list({
+  const maxResults = parseInt(req.query.limit, 10) || 5;
+
+  const messageList = await gmail.users.messages.list({
     userId: "me",
-    maxResults: 5,
+    maxResults,
   });
 
-  const mails = darkList.data.messages || [];
+  const mails = messageList.data.messages || [];
+  if (mails.length === 0) {
+    return res.status(200).json({
+      status: "ok",
+      message: "No emails found",
+      inserted: 0,
+      failed: 0,
+      totalFetched: 0,
+    });
+  }
 
   const emailDetails = await Promise.all(
     mails.map(mail =>
@@ -41,39 +52,49 @@ exports.all = catchAsync(async (req, res) => {
       const to = headers.find(h => h.name === "To")?.value?.split(",") || [];
       const subject = headers.find(h => h.name === "Subject")?.value || "";
 
-     await Email.findOneAndUpdate(
-  { messageId: detail.data.id, user: req.user.userId },
-  {
-    $setOnInsert: {   // ✅ only set these if document is new
-      user: req.user.userId,
-      messageId: detail.data.id,
-      from,
-      to,
-      subject,
-      summary: "",        // no summary yet
-      tags: [],
-      isImportant: false,
-      receivedAt: new Date(parseInt(detail.data.internalDate)),
-      isProcessed: false,
-      processedAt: null
-    }
-  },
-  { new: true, upsert: true, runValidators: true }
-);
+      // ✅ extract body cleanly
+      let body = "";
+      if (payload.parts) {
+        // Look for plain text first
+        const textPart = payload.parts.find(p => p.mimeType === "text/plain");
+        const htmlPart = payload.parts.find(p => p.mimeType === "text/html");
 
+        if (textPart?.body?.data) {
+          body = Buffer.from(textPart.body.data, "base64").toString("utf-8");
+        } else if (htmlPart?.body?.data) {
+          const html = Buffer.from(htmlPart.body.data, "base64").toString("utf-8");
+          body = convert(html, { wordwrap: false }); // ✅ strip HTML
+        }
+      } else if (payload.body?.data) {
+        body = Buffer.from(payload.body.data, "base64").toString("utf-8");
+      }
+
+      await Email.findOneAndUpdate(
+        { messageId: detail.data.id, user: req.user.userId },
+        {
+          $setOnInsert: {
+            user: req.user.userId,
+            messageId: detail.data.id,
+            from,
+            to,
+            subject,
+            body, // ✅ now always plain text
+            summary: "",
+            tags: [],
+            isImportant: false,
+            receivedAt: new Date(parseInt(detail.data.internalDate)),
+            isProcessed: false,
+            processedAt: null,
+          },
+        },
+        { new: true, upsert: true, runValidators: true }
+      );
 
       inserted++;
     } catch (err) {
       failed++;
       console.error("❌ Failed to save email:", err.message);
     }
-  }
-
-  if (failed > 0 && inserted === 0) {
-    return res.status(500).json({
-      status: "error",
-      message: "Failed to store any emails",
-    });
   }
 
   return res.status(201).json({
@@ -83,6 +104,9 @@ exports.all = catchAsync(async (req, res) => {
     totalFetched: mails.length,
   });
 });
+
+
+
 
 exports.deleteEmail = catchAsync(async (req, res) => {
   const { id } = req.params;
@@ -122,3 +146,35 @@ exports.deleteAllEmailsForUser = catchAsync(async (req, res) => {
     deletedCount: result.deletedCount,
   });
 });
+
+
+// ✅ Get all emails for the logged-in user
+exports.getAllEmails = catchAsync(async (req, res) => {
+  const userId = req.user.userId;
+
+  // pagination support
+  const page = parseInt(req.query.page, 10) || 1;
+  const limit = parseInt(req.query.limit, 10) || 10;
+  const skip = (page - 1) * limit;
+
+  // fetch emails for this user
+  const emails = await Email.find({ user: userId })
+    .sort({ receivedAt: -1 }) // latest first
+    .skip(skip)
+    .limit(limit)
+    .lean();
+
+  const totalEmails = await Email.countDocuments({ user: userId });
+  const totalPages = Math.ceil(totalEmails / limit);
+
+  res.status(200).json({
+    status: "success",
+    results: emails.length,
+    page,
+    totalPages,
+    totalEmails,
+    emails,
+  });
+});
+
+
