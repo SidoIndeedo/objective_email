@@ -26,3 +26,10 @@ Objective Email is an AI-powered email management tool that helps users quickly 
 4. AI summarization generates concise summaries and tags using fine-tuned LLMs via Cerebras API.
 5. Frontend displays emails in a searchable and paginated list.
 6. Clicking an email opens a modal with the full HTML content and AI-generated summary.
+
+## Context
+Built during a national-level hackathon under severe time constraints. Shortlisted among top projects.
+
+## Demo
+[![Hackathon Project (re uploaded)](https://img.youtube.com/vi/r_pA0Ulpsm8/0.jpg)](https://www.youtube.com/watch?v=r_pA0Ulpsm8)
+
