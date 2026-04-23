@@ -1,4 +1,4 @@
-# Objective Email
+# Objective Email (Email summarizer and prioritizer)
 
 Objective Email is an AI-powered email management tool that helps users quickly understand and organize their inbox. With the exponential growth of email communication, it’s easy to miss important messages or spend hours reading irrelevant emails. Objective Email solves this problem by fetching your emails, generating concise AI summaries, tagging content, and highlighting important messages—helping you save time and focus on what matters.
 
